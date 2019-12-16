@@ -79,6 +79,9 @@ module Matching
           @taker_order = orders.find { |order| order.id == @trade_payload[:taker_order_id] }
         end
 
+        # Check if accounts exists or create them.
+        [@maker_order, @taker_order].map(&:expect_account!)
+
         validate!
 
         accounts_table = Account

@@ -46,13 +46,15 @@ class Member < ApplicationRecord
   end
 
   def get_account(model_or_id_or_code)
-    accounts.with_currency(model_or_id_or_code).first.yield_self do |account|
-      touch_accounts unless account
-      accounts.with_currency(model_or_id_or_code).first
+    if model_or_id_or_code.is_a?(String) || model_or_id_or_code.is_a?(Symbol)
+      accounts.find_or_create_by(currency_id: model_or_id_or_code)
+    elsif model_or_id_or_code.is_a?(Currency)
+      accounts.find_or_create_by(currency: model_or_id_or_code)
     end
   end
   alias :ac :get_account
 
+  # @deprecated
   def touch_accounts
     Currency.find_each do |currency|
       next if accounts.where(currency: currency).exists?
@@ -148,11 +150,14 @@ private
     end
 
     def search(field: nil, term: nil)
+      term = "%#{term}%"
       case field
-      when 'email', 'uid'
-        where("members.#{field} LIKE ?", "%#{term}%")
+      when 'email'
+        where("email LIKE ?", term)
+      when 'uid'
+        where('uid LIKE ?', term)
       when 'wallet_address'
-        joins(:payment_addresses).where('payment_addresses.address LIKE ?', "%#{term}%")
+        joins(:payment_addresses).where('payment_addresses.address LIKE ?', term)
       else
         all
       end.order(:id).reverse_order
